@@ -40,7 +40,7 @@ With X the number of slaves
 and in others terminal :
 
 ```bash
-locust -f Scripts/redis_get_set.py --worker
+locust -f redis_stream.py --worker
 ```
 
 
