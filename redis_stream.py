@@ -57,7 +57,7 @@ def conn_db():
 
             size = 3000
             offset = 10
-            while offset < 100000:
+            while offset < 100:
                 select_movies_query = "SELECT EntityId, Id, StationId, StringValue, IntValue, DoubleValue, " \
                                       "EquipmentId, BoolValue, `Type`, `Time`, IsAlarm, IsEvent, IsBad, " \
                                       "IOType, Orignal, LogTime, Timeframe, DwordValue, LongValue, " \
@@ -67,6 +67,7 @@ def conn_db():
                     result = cursor.fetchall()
                     for row in result:
                         print(row['EntityId'])
+                        print(row)
                 offset += size
     except Error as e:
         print(e)
