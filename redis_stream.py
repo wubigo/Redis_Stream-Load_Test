@@ -10,11 +10,9 @@ from locust import User, events, TaskSet, task
 import redis
 import gevent.monkey
 gevent.monkey.patch_all()
-import settings
-from random import randint
-from getpass import getpass
 from mysql.connector import connect, Error
-
+import json
+import datetime
 
 def load_config():
     """For loading the connection details of Redis"""
@@ -39,6 +37,42 @@ def load_config():
     return redis_db, configs, msg, sys.getsizeof(msg["camera_id"])
 
 
+def prepare(row):
+    pv = dict()
+    row['Time'] = str(row['Time'])
+    row['LogTime'] = str(row['LogTime'])
+    row['ServerTime'] = str(row['ServerTime'])
+    row['CreateTime'] = str(row['CreateTime'])
+    if row['Type'] == 4:
+        row['t'] = "Bool"
+    elif row['Type'] == 1:
+        row['t'] = "Integer"
+
+    st = dict()
+    st['ib'] = row['IsBad']
+    st['it'] = row['IOType']
+    st['ov'] = 9
+
+    row['sti'] = row['ServerTime']
+    row.pop("ServerTime")
+    row['ti'] = row['Time']
+    row.pop("Time")
+    pv['pid'] = row['EntityId']
+    pv['sid'] = row['StationId']
+    vs = dict()
+    vs['id'] = row['Id']
+    vs['s'] = row['t']
+    vs['eid'] = row['EquipmentId']
+    vs['t'] = row['t']
+    vs['st'] = st
+    vs['ti'] = row['ti']
+    vs['sti'] = row['sti']
+    pv['sid'] = row['StationId']
+    pv['vs'] = vs
+    pv['pt'] = row['LogTime']
+    return pv
+
+
 def conn_db():
     try:
         with connect(
@@ -55,7 +89,7 @@ def conn_db():
                     print(items)
                     records = items
 
-            size = 3000
+            size = 300
             offset = 10
             while offset < 100:
                 select_movies_query = "SELECT EntityId, Id, StationId, StringValue, IntValue, DoubleValue, " \
@@ -66,8 +100,9 @@ def conn_db():
                     cursor.execute(select_movies_query)
                     result = cursor.fetchall()
                     for row in result:
-                        print(row['EntityId'])
-                        print(row)
+                        row = prepare(row)
+                        m = json.dumps(row)
+                        print(m)
                 offset += size
     except Error as e:
         print(e)
@@ -112,7 +147,7 @@ class RedisLocust(User):
             result = None
             start_time = time.time()
             try:
-                result = self.redis.xadd(self.stream_name, self.msg, maxlen=500)
+                result = self.redis.xadd(self.stream_name, self.msg, maxlen=50000)
                 if result is not None:
                     total_time = int((time.time() - start_time) * 1000)
                     events.request_success.fire(request_type=command, name='write',  response_time=total_time, response_length=self.size_msg)
@@ -127,3 +162,4 @@ class RedisLocust(User):
 
 
 conn_db()
+
